@@ -21,7 +21,7 @@ fn setup(commands: &mut Commands, mut materials: ResMut<Assets<ColorMaterial>>) 
     commands
         .spawn(SpriteBundle {
             material: materials.add(Color::rgba(0.0, 255.0, 0.0, 0.2).into()),
-            transform: Transform::from_xyz(0.0, -215.0, 0.0),
+            transform: Transform::from_xyz(0.0, -215.0, 999.0),
             sprite: Sprite::new(Vec2::new(50.0, 50.0)),
             visible: Visible {
                 is_visible: false,
@@ -38,9 +38,8 @@ fn setup(commands: &mut Commands, mut materials: ResMut<Assets<ColorMaterial>>) 
 fn selection_box_system(
     mouse_position: Res<MouseWorldPosition>,
     mouse_buttons: Res<Input<MouseButton>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
     mut query: Query<(&mut SelectionBox, &mut Transform, &mut Sprite, &mut Visible)>,
-    mut skeleton_query: Query<(&Transform, &mut Skeleton, &mut Handle<ColorMaterial>)>,
+    mut skeleton_query: Query<(&Transform, &mut Skeleton, &mut TextureAtlasSprite)>,
 ) {
     if let Some((mut selection_box, mut transform, mut sprite, mut visible)) =
         query.iter_mut().next()
@@ -67,10 +66,7 @@ fn selection_box_system(
 
                 info!("{} {} {} {}", min_x, max_x, min_y, max_y);
 
-                let selected_material = materials.add(Color::rgb(0.0, 255.0, 0.0).into());
-                let unselected = materials.add(Color::rgb(0.7, 0.7, 0.7).into());
-
-                for (skeleton_transform, mut skeleton, mut color_material) in
+                for (skeleton_transform, mut skeleton, mut texture_atlas_sprite) in
                     skeleton_query.iter_mut()
                 {
                     let trans = skeleton_transform.translation;
@@ -78,10 +74,10 @@ fn selection_box_system(
 
                     if trans.x > min_x && trans.x < max_x && trans.y > min_y && trans.y < max_y {
                         skeleton.selected = true;
-                        *color_material = selected_material.clone();
+                        texture_atlas_sprite.color = Color::RED;
                     } else {
                         skeleton.selected = false;
-                        *color_material = unselected.clone();
+                        texture_atlas_sprite.color = Color::WHITE;
                     }
                 }
 

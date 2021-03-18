@@ -2,53 +2,47 @@ use std::cmp::Ordering;
 use std::collections::BinaryHeap;
 use std::collections::HashMap;
 
+use bevy::prelude::*;
+
+use crate::grid::Grid;
+
 const TILE_SIZE: i32 = 32;
 
-pub struct PathFinder {}
+pub struct PathFinder<'a> {
+    pub grid: &'a Grid,
+}
 
 type Location = (i32, i32);
 
-impl PathFinder {
-    pub fn path(&self, from: Location, to: Location) -> Vec<Location> {
-        let neighbor_deltas = vec![
-            (0, -1),
-            (0, 1),
-            (-1, 1),
-            (-1, 0),
-            (-1, -1),
-            (1, -1),
-            (1, 0),
-            (1, 1),
-        ];
+impl<'a> PathFinder<'a> {
+    pub fn path(&self, from: Vec3, to: Vec3) -> Vec<Location> {
+        let from_location = self.world_to_grid_coordinates(from);
+        let to_location = self.world_to_grid_coordinates(to);
 
         let mut came_from = HashMap::<Location, Location>::new();
         let mut cost_so_far = HashMap::<Location, i32>::new();
 
         let mut open_list = BinaryHeap::new();
         open_list.push(PathNodePriority {
-            loc: from,
+            loc: from_location,
             f_score: 0,
         });
-        cost_so_far.insert(from, 0);
+        cost_so_far.insert(from_location, 0);
 
         while !open_list.is_empty() {
             let current = open_list.pop().unwrap();
-            println!("Checking current: {:?}", current.loc);
 
-            if current.loc.0 == to.0 && current.loc.1 == to.1 {
-                println!("FOUND!");
+            if current.loc.0 == to_location.0 && current.loc.1 == to_location.1 {
                 return self.reconstruct_path(current.loc, came_from);
             }
 
-            for (i, j) in &neighbor_deltas {
-                let neighbor_location = (current.loc.0 + i, current.loc.1 + j);
-
+            for neighbor_location in self.grid.accessible_neighbors(current.loc) {
                 let new_cost = cost_so_far.get(&current.loc).unwrap() + 10;
                 let neighbhor_cost = cost_so_far.get(&neighbor_location);
 
                 if neighbhor_cost.is_none() || &new_cost < neighbhor_cost.unwrap() {
                     cost_so_far.insert(neighbor_location, new_cost);
-                    let priority = new_cost + self.heuristic(neighbor_location, to);
+                    let priority = new_cost + self.heuristic(neighbor_location, to_location);
                     open_list.push(PathNodePriority {
                         loc: neighbor_location,
                         f_score: priority,
@@ -60,6 +54,13 @@ impl PathFinder {
 
         // TODO Let's return a result here when path is not found
         vec![]
+    }
+
+    fn world_to_grid_coordinates(&self, position: Vec3) -> Location {
+        (
+            ((position.x + 512.0) / 32.0) as i32,
+            ((position.y + 512.0) / 32.0) as i32,
+        )
     }
 
     fn reconstruct_path(

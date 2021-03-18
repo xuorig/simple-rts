@@ -1,4 +1,6 @@
+use crate::grid::Grid;
 use crate::mouse_position::MouseWorldPosition;
+use crate::path_finding::PathFinder;
 use bevy::prelude::*;
 
 pub struct SkeletonPlugin;
@@ -6,7 +8,7 @@ pub struct SkeletonPlugin;
 impl Plugin for SkeletonPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_startup_system(setup.system())
-            .add_system(animation.system())
+            // .add_system(animation.system())
             .add_system(order_system.system())
             .add_system(move_system.system());
     }
@@ -18,42 +20,56 @@ pub struct Skeleton {
 
 fn spawn_skeleton(
     commands: &mut Commands,
-    material_handle: Handle<ColorMaterial>,
     translation: Vec3,
+    texture_atlas_handle: Handle<TextureAtlas>,
 ) {
     commands
-        .spawn(SpriteBundle {
-            material: material_handle,
+        .spawn(SpriteSheetBundle {
+            texture_atlas: texture_atlas_handle,
             transform: Transform {
                 translation,
+                scale: Vec3::new(1.25, 1.25, 1.0),
                 ..Default::default()
             },
-            sprite: Sprite::new(Vec2::new(20.0, 20.0)),
+            sprite: TextureAtlasSprite {
+                index: 0,
+                color: Color::WHITE,
+            },
             ..Default::default()
         })
         .with(Timer::from_seconds(0.1, true))
-        .with(MoveOrder { order: None })
+        .with(MoveOrder { path: vec![] })
         .with(Skeleton { selected: false });
 }
 
-fn setup(commands: &mut Commands, mut materials: ResMut<Assets<ColorMaterial>>) {
-    let material_handle = materials.add(Color::rgb(0.7, 0.7, 0.7).into());
+fn setup(
+    commands: &mut Commands,
+    asset_server: Res<AssetServer>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
+) {
+    let texture_handle = asset_server.load("dino.png");
+    let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(24.0, 24.0), 24, 1);
+    let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
     spawn_skeleton(
         commands,
-        material_handle.clone(),
-        Vec3::new(100.0, 100.0, 1.0),
-    );
-    spawn_skeleton(commands, material_handle.clone(), Vec3::new(0.0, 0.0, 1.0));
-    spawn_skeleton(
-        commands,
-        material_handle.clone(),
-        Vec3::new(-100.0, -100.0, 1.0),
+        Vec3::new(100.0, 100.0, 500.0),
+        texture_atlas_handle.clone(),
     );
     spawn_skeleton(
         commands,
-        material_handle.clone(),
-        Vec3::new(23.0, 42.0, 1.0),
+        Vec3::new(0.0, 0.0, 500.0),
+        texture_atlas_handle.clone(),
+    );
+    spawn_skeleton(
+        commands,
+        Vec3::new(-100.0, -100.0, 500.0),
+        texture_atlas_handle.clone(),
+    );
+    spawn_skeleton(
+        commands,
+        Vec3::new(23.0, 42.0, 500.0),
+        texture_atlas_handle.clone(),
     );
 }
 
@@ -68,18 +84,21 @@ fn animation(time: Res<Time>, mut query: Query<(&Skeleton, &mut Timer, &mut Text
 }
 
 pub struct MoveOrder {
-    order: Option<Vec2>,
+    pub path: Vec<(i32, i32)>,
 }
 
 fn order_system(
     mouse_buttons: Res<Input<MouseButton>>,
     mouse_position: Res<MouseWorldPosition>,
-    mut query: Query<(&Skeleton, &mut MoveOrder)>,
+    grid: Res<Grid>,
+    mut query: Query<(&Skeleton, &Transform, &mut MoveOrder)>,
 ) {
     if mouse_buttons.just_pressed(MouseButton::Right) {
-        for (skeleton, mut move_order) in query.iter_mut() {
+        for (skeleton, transform, mut move_order) in query.iter_mut() {
             if skeleton.selected {
-                move_order.order = Some(Vec2::new(mouse_position.0.x, mouse_position.0.y));
+                let path_finder = PathFinder { grid: &grid };
+                let best_path = path_finder.path(transform.translation, mouse_position.0);
+                move_order.path = best_path;
             }
         }
     }
@@ -87,33 +106,40 @@ fn order_system(
 
 fn move_system(
     time: Res<Time>,
-    mut query: Query<(&Skeleton, &mut Transform, &MoveOrder, &mut Timer)>,
+    mut query: Query<(&Skeleton, &mut Transform, &mut MoveOrder, &mut Timer)>,
 ) {
-    for (_skeleton, mut transform, move_order, mut timer) in query.iter_mut() {
+    for (_skeleton, mut transform, mut move_order, mut timer) in query.iter_mut() {
         timer.tick(time.delta().as_secs_f32());
 
         if timer.finished() {
-            if let Some(order) = move_order.order {
-                info!("Moving!");
-                info!("{}, {}", order, transform.translation);
+            if !move_order.path.is_empty() {
+                let order = move_order.path[0];
 
                 let mut x = transform.translation.x;
                 let mut y = transform.translation.y;
 
-                if (order.x - transform.translation.x).abs() < 5.0 {
-                    x = order.x;
-                } else if order.x > transform.translation.x {
+                let order_x = (order.0 * 32 + 16 - 512) as f32;
+                let order_y = (order.1 * 32 + 16 - 512) as f32;
+
+                if (order_x - transform.translation.x).abs() < 5.0 {
+                    x = order_x;
+                } else if order_x > transform.translation.x {
                     x = transform.translation.x + 5.0;
-                } else if order.x < transform.translation.x {
+                } else if order_x < transform.translation.x {
                     x = transform.translation.x - 5.0;
                 }
 
-                if (order.y - transform.translation.y).abs() < 5.0 {
-                    y = order.y
-                } else if order.y > transform.translation.y {
+                if (order_y - transform.translation.y).abs() < 5.0 {
+                    y = order_y
+                } else if order_y > transform.translation.y {
                     y = transform.translation.y + 5.0;
-                } else if order.y < transform.translation.y {
+                } else if order_y < transform.translation.y {
                     y = transform.translation.y - 5.0;
+                }
+
+                if x == order_x && y == order_y {
+                    // We completed that path node
+                    move_order.path.remove(0);
                 }
 
                 transform.translation = Vec3::new(x, y, 1.0);
