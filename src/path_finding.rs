@@ -64,11 +64,6 @@ impl<'a> PathFinder<'a> {
         }
 
         // TODO Let's return a result here when path is not found
-        info!("No path found from {:?} to {:?}", from, to);
-        info!(
-            "No path found from {:?} to {:?}",
-            from_location, to_location
-        );
         vec![]
     }
 
@@ -99,7 +94,8 @@ impl<'a> PathFinder<'a> {
     }
 
     fn heuristic(&self, a: Location, b: Location) -> i32 {
-        (a.0 - b.1).abs() + (a.0 - b.1).abs()
+        let euclidian_dist = (((a.0 - b.1).pow(2) + (a.0 - b.1).pow(2)) as f64).sqrt();
+        euclidian_dist as i32
     }
 }
 
