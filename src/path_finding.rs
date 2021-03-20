@@ -94,8 +94,12 @@ impl<'a> PathFinder<'a> {
     }
 
     fn heuristic(&self, a: Location, b: Location) -> i32 {
-        let euclidian_dist = (((a.0 - b.1).pow(2) + (a.0 - b.1).pow(2)) as f64).sqrt();
-        euclidian_dist as i32
+        // Euclidean Distance
+        // let euclidian_dist = (((a.0 - b.1).pow(2) + (a.0 - b.1).pow(2)) as f64).sqrt();
+        // euclidian_dist as i32
+
+        // Chebyshev Distance
+        std::cmp::max(b.0 - a.0, b.1 - a.1)
     }
 }
 
