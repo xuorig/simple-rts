@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::mouse_position::MouseWorldPosition;
-use crate::skeleton::Skeleton;
+use crate::unit::Unit;
 
 pub struct SelectionBoxPlugin;
 
@@ -39,7 +39,7 @@ fn selection_box_system(
     mouse_position: Res<MouseWorldPosition>,
     mouse_buttons: Res<Input<MouseButton>>,
     mut query: Query<(&mut SelectionBox, &mut Transform, &mut Sprite, &mut Visible)>,
-    mut skeleton_query: Query<(&Transform, &mut Skeleton, &mut TextureAtlasSprite)>,
+    mut unit_query: Query<(&Transform, &mut Unit, &mut TextureAtlasSprite)>,
 ) {
     if let Some((mut selection_box, mut transform, mut sprite, mut visible)) =
         query.iter_mut().next()
@@ -66,16 +66,14 @@ fn selection_box_system(
 
                 debug!("Selection Box {} {} {} {}", min_x, max_x, min_y, max_y);
 
-                for (skeleton_transform, mut skeleton, mut texture_atlas_sprite) in
-                    skeleton_query.iter_mut()
-                {
-                    let trans = skeleton_transform.translation;
+                for (unit_transform, mut unit, mut texture_atlas_sprite) in unit_query.iter_mut() {
+                    let trans = unit_transform.translation;
 
                     if trans.x > min_x && trans.x < max_x && trans.y > min_y && trans.y < max_y {
-                        skeleton.selected = true;
+                        unit.selected = true;
                         texture_atlas_sprite.color = Color::RED;
                     } else {
-                        skeleton.selected = false;
+                        unit.selected = false;
                         texture_atlas_sprite.color = Color::WHITE;
                     }
                 }

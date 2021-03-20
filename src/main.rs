@@ -3,8 +3,8 @@ mod map_setup;
 mod mouse_position;
 mod path_finding;
 mod selection_box;
-mod skeleton;
 mod tiled;
+mod unit;
 
 use bevy::prelude::*;
 use bevy::render::camera::Camera;
@@ -12,7 +12,7 @@ use bevy::render::camera::Camera;
 use grid::Grid;
 use mouse_position::MousePositionPlugin;
 use selection_box::SelectionBoxPlugin;
-use skeleton::SkeletonPlugin;
+use unit::UnitPlugin;
 
 fn main() {
     let map = tiled::Map::from_json_file("assets/basic_map.json").expect("Couldnt load map");
@@ -21,8 +21,8 @@ fn main() {
     App::build()
         .insert_resource(WindowDescriptor {
             title: "Simple RTS Demo".to_string(),
-            width: 512.,
-            height: 512.,
+            width: 1024.,
+            height: 1024.,
             vsync: false,
             ..Default::default()
         })
@@ -31,7 +31,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(MousePositionPlugin)
         .add_plugin(SelectionBoxPlugin)
-        .add_plugin(SkeletonPlugin)
+        .add_plugin(UnitPlugin)
         .add_startup_system(setup.system())
         .add_startup_system(map_setup::setup.system())
         .add_system(camera_movement.system())

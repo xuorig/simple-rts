@@ -54,7 +54,7 @@ impl Grid {
                 current_row.push(tile_type);
             }
 
-            grid.grid.push(current_row);
+            grid.grid.insert(0, current_row);
         }
 
         Ok(grid)

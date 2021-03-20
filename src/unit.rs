@@ -4,9 +4,9 @@ use crate::path_finding::PathFinder;
 use crate::tiled::Map;
 use bevy::prelude::*;
 
-pub struct SkeletonPlugin;
+pub struct UnitPlugin;
 
-impl Plugin for SkeletonPlugin {
+impl Plugin for UnitPlugin {
     fn build(&self, app: &mut AppBuilder) {
         app.add_startup_system(setup.system())
             // .add_system(animation.system())
@@ -15,11 +15,11 @@ impl Plugin for SkeletonPlugin {
     }
 }
 
-pub struct Skeleton {
+pub struct Unit {
     pub selected: bool,
 }
 
-fn spawn_skeleton(
+fn spawn_unit(
     commands: &mut Commands,
     translation: Vec3,
     texture_atlas_handle: Handle<TextureAtlas>,
@@ -29,7 +29,7 @@ fn spawn_skeleton(
             texture_atlas: texture_atlas_handle,
             transform: Transform {
                 translation,
-                scale: Vec3::new(1.25, 1.25, 1.0),
+                scale: Vec3::new(1.25, 1.25, 999.0),
                 ..Default::default()
             },
             sprite: TextureAtlasSprite {
@@ -38,9 +38,9 @@ fn spawn_skeleton(
             },
             ..Default::default()
         })
-        .with(Timer::from_seconds(0.1, true))
+        .with(Timer::from_seconds(0.05, true))
         .with(MoveOrder { path: vec![] })
-        .with(Skeleton { selected: false });
+        .with(Unit { selected: false });
 }
 
 fn setup(
@@ -52,30 +52,30 @@ fn setup(
     let texture_atlas = TextureAtlas::from_grid(texture_handle, Vec2::new(24.0, 24.0), 24, 1);
     let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
-    spawn_skeleton(
+    spawn_unit(
         commands,
         Vec3::new(100.0, 100.0, 500.0),
         texture_atlas_handle.clone(),
     );
-    spawn_skeleton(
+    spawn_unit(
         commands,
         Vec3::new(0.0, 0.0, 500.0),
         texture_atlas_handle.clone(),
     );
-    spawn_skeleton(
+    spawn_unit(
         commands,
         Vec3::new(-100.0, -100.0, 500.0),
         texture_atlas_handle.clone(),
     );
-    spawn_skeleton(
+    spawn_unit(
         commands,
         Vec3::new(23.0, 42.0, 500.0),
         texture_atlas_handle.clone(),
     );
 }
 
-fn animation(time: Res<Time>, mut query: Query<(&Skeleton, &mut Timer, &mut TextureAtlasSprite)>) {
-    for (_skeleton, mut timer, mut sprite) in query.iter_mut() {
+fn animation(time: Res<Time>, mut query: Query<(&Unit, &mut Timer, &mut TextureAtlasSprite)>) {
+    for (_unit, mut timer, mut sprite) in query.iter_mut() {
         timer.tick(time.delta().as_secs_f32());
 
         if timer.finished() {
@@ -93,16 +93,16 @@ fn order_system(
     mouse_position: Res<MouseWorldPosition>,
     grid: Res<Grid>,
     map: Res<Map>,
-    mut query: Query<(&Skeleton, &Transform, &mut MoveOrder)>,
+    mut query: Query<(&Unit, &Transform, &mut MoveOrder)>,
 ) {
     if mouse_buttons.just_pressed(MouseButton::Right) {
-        for (skeleton, transform, mut move_order) in query.iter_mut() {
-            if skeleton.selected {
+        for (unit, transform, mut move_order) in query.iter_mut() {
+            if unit.selected {
                 let path_finder = PathFinder::new(&map, &grid);
                 let best_path = path_finder.path(transform.translation, mouse_position.0);
 
-                debug!("Mouse Click {:?}", mouse_position);
-                debug!("Best Path: {:?}", best_path);
+                info!("Mouse Click {:?}", mouse_position);
+                info!("Best Path: {:?}", best_path);
 
                 move_order.path = best_path;
             }
@@ -122,9 +122,9 @@ fn tile_to_world_coord(tile_pos: (i32, i32), map: &Map) -> Vec2 {
 fn move_system(
     time: Res<Time>,
     map: Res<Map>,
-    mut query: Query<(&Skeleton, &mut Transform, &mut MoveOrder, &mut Timer)>,
+    mut query: Query<(&Unit, &mut Transform, &mut MoveOrder, &mut Timer)>,
 ) {
-    for (_skeleton, mut transform, mut move_order, mut timer) in query.iter_mut() {
+    for (_unit, mut transform, mut move_order, mut timer) in query.iter_mut() {
         timer.tick(time.delta().as_secs_f32());
 
         if timer.finished() {
@@ -136,12 +136,12 @@ fn move_system(
 
                 let world_coords = tile_to_world_coord(order, &map);
 
-                debug!("Going to Tile: {:?}", order);
+                info!("Going to Tile: {:?}", order);
 
                 let order_x = world_coords.x;
                 let order_y = world_coords.y;
 
-                debug!("In World Coordinates: {:?}", world_coords);
+                info!("In World Coordinates: {:?}", world_coords);
 
                 if (order_x - transform.translation.x).abs() < 5.0 {
                     x = order_x;
@@ -164,7 +164,7 @@ fn move_system(
                     move_order.path.remove(0);
                 }
 
-                transform.translation = Vec3::new(x, y, 1.0);
+                transform.translation = Vec3::new(x, y, 999.0);
             }
         }
     }

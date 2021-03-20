@@ -30,9 +30,12 @@ pub fn setup(
                     continue;
                 }
 
+                // Tiled renders top down
+                let real_y = layer.height - y - 1;
+
                 let translation = Vec3::new(
                     (x * map.tile_width) as f32 + (map.tile_width / 2) as f32 - (map_width / 2.0),
-                    (y * map.tile_height) as f32 + (map.tile_height / 2) as f32
+                    (real_y * map.tile_height) as f32 + (map.tile_height / 2) as f32
                         - (map_height / 2.0),
                     layer.id as f32,
                 );

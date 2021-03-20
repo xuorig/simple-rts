@@ -64,6 +64,11 @@ impl<'a> PathFinder<'a> {
         }
 
         // TODO Let's return a result here when path is not found
+        info!("No path found from {:?} to {:?}", from, to);
+        info!(
+            "No path found from {:?} to {:?}",
+            from_location, to_location
+        );
         vec![]
     }
 
