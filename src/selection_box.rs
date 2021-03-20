@@ -64,13 +64,12 @@ fn selection_box_system(
                 let min_y = transform.translation.y - (sprite.size.y / 2.0);
                 let max_y = transform.translation.y + (sprite.size.y / 2.0);
 
-                info!("{} {} {} {}", min_x, max_x, min_y, max_y);
+                debug!("Selection Box {} {} {} {}", min_x, max_x, min_y, max_y);
 
                 for (skeleton_transform, mut skeleton, mut texture_atlas_sprite) in
                     skeleton_query.iter_mut()
                 {
                     let trans = skeleton_transform.translation;
-                    info!("{:?}", trans);
 
                     if trans.x > min_x && trans.x < max_x && trans.y > min_y && trans.y < max_y {
                         skeleton.selected = true;
@@ -81,7 +80,6 @@ fn selection_box_system(
                     }
                 }
 
-                // Remove Box
                 selection_box.active = false;
                 visible.is_visible = false;
             }

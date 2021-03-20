@@ -1,6 +1,7 @@
 use crate::grid::Grid;
 use crate::mouse_position::MouseWorldPosition;
 use crate::path_finding::PathFinder;
+use crate::tiled::Map;
 use bevy::prelude::*;
 
 pub struct SkeletonPlugin;
@@ -91,21 +92,36 @@ fn order_system(
     mouse_buttons: Res<Input<MouseButton>>,
     mouse_position: Res<MouseWorldPosition>,
     grid: Res<Grid>,
+    map: Res<Map>,
     mut query: Query<(&Skeleton, &Transform, &mut MoveOrder)>,
 ) {
     if mouse_buttons.just_pressed(MouseButton::Right) {
         for (skeleton, transform, mut move_order) in query.iter_mut() {
             if skeleton.selected {
-                let path_finder = PathFinder { grid: &grid };
+                let path_finder = PathFinder::new(&map, &grid);
                 let best_path = path_finder.path(transform.translation, mouse_position.0);
+
+                debug!("Mouse Click {:?}", mouse_position);
+                debug!("Best Path: {:?}", best_path);
+
                 move_order.path = best_path;
             }
         }
     }
 }
 
+fn tile_to_world_coord(tile_pos: (i32, i32), map: &Map) -> Vec2 {
+    Vec2::new(
+        (tile_pos.0 * map.tile_width) as f32 + (map.tile_width / 2) as f32
+            - (map.width * map.tile_width / 2) as f32,
+        (tile_pos.1 * map.tile_height) as f32 + (map.tile_height / 2) as f32
+            - (map.height * map.tile_height / 2) as f32,
+    )
+}
+
 fn move_system(
     time: Res<Time>,
+    map: Res<Map>,
     mut query: Query<(&Skeleton, &mut Transform, &mut MoveOrder, &mut Timer)>,
 ) {
     for (_skeleton, mut transform, mut move_order, mut timer) in query.iter_mut() {
@@ -118,8 +134,14 @@ fn move_system(
                 let mut x = transform.translation.x;
                 let mut y = transform.translation.y;
 
-                let order_x = (order.0 * 32 + 16 - 512) as f32;
-                let order_y = (order.1 * 32 + 16 - 512) as f32;
+                let world_coords = tile_to_world_coord(order, &map);
+
+                debug!("Going to Tile: {:?}", order);
+
+                let order_x = world_coords.x;
+                let order_y = world_coords.y;
+
+                debug!("In World Coordinates: {:?}", world_coords);
 
                 if (order_x - transform.translation.x).abs() < 5.0 {
                     x = order_x;

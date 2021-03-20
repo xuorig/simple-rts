@@ -1,39 +1,55 @@
-use crate::grid::{Grid, TileType};
+use crate::tiled::Map;
 use bevy::prelude::*;
-
-const TILE_SIZE: f32 = 32.;
-
-const MAP_HEIGHT: i32 = 32;
-const MAP_WIDTH: i32 = 32;
 
 pub fn setup(
     commands: &mut Commands,
     asset_server: Res<AssetServer>,
-    map: Res<Grid>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    map: Res<Map>,
+    mut texture_atlases: ResMut<Assets<TextureAtlas>>,
 ) {
-    let grass_handle = asset_server.load("grass.png");
-    let water_handle = asset_server.load("water.png");
+    let map_width = (map.width * map.tile_width) as f32;
+    let map_height = (map.height * map.tile_height) as f32;
 
-    for x in 0..MAP_WIDTH {
-        for y in 0..MAP_HEIGHT {
-            let texture = match map.at((x, y)) {
-                TileType::UNWALKABLE => water_handle.clone(),
-                _ => grass_handle.clone(),
-            };
+    // Assuming only one tileset for now
+    let tile_set_path = &map.tilesets[0].image;
+    let texture_handle = asset_server.load(tile_set_path.as_str());
+    let texture_atlas = TextureAtlas::from_grid(
+        texture_handle,
+        Vec2::new(map.tile_width as f32, map.tile_height as f32),
+        map.tilesets[0].columns as usize,
+        (map.tilesets[0].tile_count / map.tilesets[0].columns) as usize,
+    );
+    let texture_atlas_handle = texture_atlases.add(texture_atlas);
 
-            commands.spawn(SpriteBundle {
-                material: materials.add(texture.into()),
-                transform: Transform {
-                    translation: Vec3::new(
-                        (x as f32 * TILE_SIZE) + (TILE_SIZE / 2.0) - 512.0,
-                        (y as f32 * TILE_SIZE) + (TILE_SIZE / 2.0) - 512.0,
-                        0.0,
-                    ),
+    for layer in map.layers.iter() {
+        for y in 0..layer.height {
+            for x in 0..layer.width {
+                let sprite_index = layer.data[(y * layer.width + x) as usize] - 1;
+
+                if sprite_index == -1 {
+                    continue;
+                }
+
+                let translation = Vec3::new(
+                    (x * map.tile_width) as f32 + (map.tile_width / 2) as f32 - (map_width / 2.0),
+                    (y * map.tile_height) as f32 + (map.tile_height / 2) as f32
+                        - (map_height / 2.0),
+                    layer.id as f32,
+                );
+
+                commands.spawn(SpriteSheetBundle {
+                    texture_atlas: texture_atlas_handle.clone(),
+                    sprite: TextureAtlasSprite {
+                        index: sprite_index as u32,
+                        ..Default::default()
+                    },
+                    transform: Transform {
+                        translation,
+                        ..Default::default()
+                    },
                     ..Default::default()
-                },
-                ..Default::default()
-            });
+                });
+            }
         }
     }
 }

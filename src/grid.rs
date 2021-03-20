@@ -1,43 +1,60 @@
-use serde::Deserialize;
-use std::fs;
-use std::io;
+use crate::tiled::{Map, PropertyValue};
 
-#[derive(Copy, Clone)]
+const WALKABLE: &str = "walkable";
+
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum TileType {
     WALKABLE,
     UNWALKABLE,
 }
 
+#[derive(Debug)]
 pub struct Grid {
     grid: Vec<Vec<TileType>>,
 }
 
-#[derive(Deserialize, Debug)]
-struct GridRepr {
-    grid: Vec<Vec<String>>,
-}
+#[derive(Debug, Clone)]
+pub struct GridError;
 
 impl Grid {
-    pub fn from_json(path: String) -> Result<Grid, io::Error> {
-        let data = fs::read_to_string(path).expect("Unable to read path file");
-        let g: GridRepr = serde_json::from_str(data.as_str())?;
-
+    /// Builds a collision grid for path finding from a Tiled map
+    pub fn from_tiled_map(map: &Map) -> Result<Grid, GridError> {
         let mut grid = Grid { grid: vec![] };
 
-        for row in g.grid.iter() {
-            let mut new_row = vec![];
+        for y in 0..map.height {
+            let mut current_row = vec![];
 
-            for col in row.iter() {
-                let tile_type = if col == "W" {
-                    TileType::UNWALKABLE {}
-                } else {
-                    TileType::WALKABLE {}
-                };
+            for x in 0..map.width {
+                let mut tile_type = TileType::WALKABLE;
 
-                new_row.push(tile_type);
+                for layer in map.layers.iter() {
+                    // Check for a collision on each layer
+                    // Collisions are defined as custom properties on the tiles
+                    let tile_number = layer.data[(y * layer.width + x) as usize];
+                    // Assuming a single tileset at the moment
+                    let tileset = &map.tilesets[0];
+
+                    // Indexing is weird?
+                    let tile = tileset.tiles.iter().find(|&t| t.id == tile_number - 1);
+
+                    if let Some(tile) = tile {
+                        let walkable_property =
+                            tile.properties.iter().find(|&p| p.name == WALKABLE);
+
+                        if let Some(walk) = walkable_property {
+                            if let PropertyValue::Bool(w) = walk.value {
+                                if !w {
+                                    tile_type = TileType::UNWALKABLE;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                current_row.push(tile_type);
             }
 
-            grid.grid.push(new_row);
+            grid.grid.push(current_row);
         }
 
         Ok(grid)
@@ -65,9 +82,9 @@ impl Grid {
             let neighbor_location = (position.0 + i, position.1 + j);
 
             let inbounds = neighbor_location.0 >= 0
-                && neighbor_location.0 < 32
+                && neighbor_location.0 < self.grid[0].len() as i32
                 && neighbor_location.1 >= 0
-                && neighbor_location.1 < 32;
+                && neighbor_location.1 < self.grid.len() as i32;
 
             if inbounds {
                 match self.at(neighbor_location) {
@@ -80,5 +97,20 @@ impl Grid {
         }
 
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_tiled_map() {
+        let map = Map::from_json_file("assets/basic_map.json").expect("Failed to load map");
+
+        let grid = Grid::from_tiled_map(&map).expect("Failed to build grid from Tiled map");
+
+        let tile_walk_type = grid.at((0, 0));
+        assert_eq!(TileType::WALKABLE, tile_walk_type);
     }
 }

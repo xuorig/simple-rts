@@ -5,16 +5,27 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use crate::grid::Grid;
-
-const TILE_SIZE: i32 = 32;
+use crate::tiled::Map;
 
 pub struct PathFinder<'a> {
+    pub map: &'a Map,
     pub grid: &'a Grid,
+    pub world_width: i32,
+    pub world_height: i32,
 }
 
 type Location = (i32, i32);
 
 impl<'a> PathFinder<'a> {
+    pub fn new(map: &'a Map, grid: &'a Grid) -> Self {
+        Self {
+            map,
+            grid,
+            world_width: map.width * map.tile_width,
+            world_height: map.height * map.tile_height,
+        }
+    }
+
     pub fn path(&self, from: Vec3, to: Vec3) -> Vec<Location> {
         let from_location = self.world_to_grid_coordinates(from);
         let to_location = self.world_to_grid_coordinates(to);
@@ -58,8 +69,8 @@ impl<'a> PathFinder<'a> {
 
     fn world_to_grid_coordinates(&self, position: Vec3) -> Location {
         (
-            ((position.x + 512.0) / 32.0) as i32,
-            ((position.y + 512.0) / 32.0) as i32,
+            ((position.x + self.world_width as f32 / 2.0) / self.map.tile_width as f32) as i32,
+            ((position.y + self.world_height as f32 / 2.0) / self.map.tile_height as f32) as i32,
         )
     }
 
@@ -112,14 +123,14 @@ impl PartialEq for PathNodePriority {
 
 impl Eq for PathNodePriority {}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_path_finding() {
-        let pf = PathFinder {};
-        let path = pf.path((1, 1), (4, 6));
-        assert_eq!(vec![(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (4, 6)], path);
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+//
+//     #[test]
+//     fn test_path_finding() {
+//         let pf = PathFinder {};
+//         let path = pf.path((1, 1), (4, 6));
+//         assert_eq!(vec![(1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (4, 6)], path);
+//     }
+// }
