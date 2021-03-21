@@ -22,6 +22,10 @@ impl Animations {
             animations,
         }
     }
+
+    pub fn play(&mut self, animation: String) {
+        self.current_animation = animation;
+    }
 }
 
 pub struct Animation {

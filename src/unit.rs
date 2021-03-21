@@ -20,6 +20,9 @@ impl Plugin for UnitPlugin {
 
 pub struct Unit {
     pub selected: bool,
+    pub velocity: Vec2,
+    pub max_speed: f32,
+    pub max_force: f32,
 }
 
 fn spawn_unit(
@@ -49,7 +52,12 @@ fn spawn_unit(
         .with(Timer::from_seconds(0.1, true))
         .with(Animations::new("idle".to_string(), animations))
         .with(MoveOrder { path: vec![] })
-        .with(Unit { selected: false });
+        .with(Unit {
+            selected: false,
+            velocity: Vec2::zero(),
+            max_speed: 100.0,
+            max_force: 250.0,
+        });
 }
 
 fn setup(
@@ -92,10 +100,10 @@ fn order_system(
     mouse_position: Res<MouseWorldPosition>,
     grid: Res<Grid>,
     map: Res<Map>,
-    mut query: Query<(&Unit, &Transform, &mut MoveOrder)>,
+    mut query: Query<(&Transform, &mut Unit, &mut MoveOrder)>,
 ) {
     if mouse_buttons.just_pressed(MouseButton::Right) {
-        for (unit, transform, mut move_order) in query.iter_mut() {
+        for (transform, mut unit, mut move_order) in query.iter_mut() {
             if unit.selected {
                 let path_finder = PathFinder::new(&map, &grid);
                 let best_path = path_finder.path(transform.translation, mouse_position.0);
@@ -103,6 +111,7 @@ fn order_system(
                 info!("Mouse Click {:?}", mouse_position);
                 info!("Best Path: {:?}", best_path);
 
+                unit.velocity = Vec2::zero();
                 move_order.path = best_path;
             }
         }
@@ -118,53 +127,46 @@ fn tile_to_world_coord(tile_pos: (i32, i32), map: &Map) -> Vec2 {
     )
 }
 
+const ARRIVAL_RADIUS: f32 = 8.0;
+
 fn move_system(
     time: Res<Time>,
     map: Res<Map>,
-    mut query: Query<(&Unit, &mut Transform, &mut MoveOrder, &mut Animations)>,
+    mut query: Query<(&mut Unit, &mut Transform, &mut MoveOrder, &mut Animations)>,
 ) {
-    for (_unit, mut transform, mut move_order, mut animations) in query.iter_mut() {
+    for (mut unit, mut transform, mut move_order, mut animations) in query.iter_mut() {
         if move_order.path.is_empty() {
-            animations.current_animation = "idle".to_string();
+            animations.play("idle".to_string());
         } else {
-            animations.current_animation = "moving".to_string();
+            animations.play("moving".to_string());
 
             let order = move_order.path[0];
+            let order_coords = tile_to_world_coord(order, &map);
 
-            let mut x = transform.translation.x;
-            let mut y = transform.translation.y;
+            let desired = order_coords - transform.translation.truncate();
+            let desired_velocity = desired * (unit.max_speed / desired.length());
+            let force = desired_velocity - unit.velocity;
+            let seek = force * (unit.max_force / unit.max_speed);
 
-            let world_coords = tile_to_world_coord(order, &map);
+            unit.velocity += seek * time.delta_seconds();
+            // unit.velocity = desired_velocity;
 
-            let order_x = world_coords.x;
-            let order_y = world_coords.y;
+            let speed = unit.velocity.length();
 
-            let speed = 48.0;
-
-            if (order_x - transform.translation.x).abs() < time.delta_seconds() * speed {
-                x = order_x;
-            } else if order_x > transform.translation.x {
-                transform.rotation = Quat::default();
-                x = transform.translation.x + time.delta_seconds() * speed;
-            } else if order_x < transform.translation.x {
-                transform.rotation = Quat::from_rotation_y(std::f32::consts::PI);
-                x = transform.translation.x - time.delta_seconds() * speed;
+            if speed > unit.max_speed {
+                unit.velocity = unit.velocity * (4.0 / speed);
             }
 
-            if (order_y - transform.translation.y).abs() < time.delta_seconds() * speed {
-                y = order_y
-            } else if order_y > transform.translation.y {
-                y = transform.translation.y + time.delta_seconds() * speed;
-            } else if order_y < transform.translation.y {
-                y = transform.translation.y - time.delta_seconds() * speed;
-            }
+            let new_translation = unit.velocity * time.delta_seconds();
 
-            if x == order_x && y == order_y {
-                // We completed that path node
+            transform.translation.x += new_translation.x;
+            transform.translation.y += new_translation.y;
+
+            let diff = transform.translation.truncate() - order_coords;
+
+            if diff.length() < 16.0 {
                 move_order.path.remove(0);
             }
-
-            transform.translation = Vec3::new(x, y, 999.0);
         }
     }
 }
