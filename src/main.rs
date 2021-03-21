@@ -1,3 +1,4 @@
+mod animation;
 mod grid;
 mod map_setup;
 mod mouse_position;
@@ -9,6 +10,7 @@ mod unit;
 use bevy::prelude::*;
 use bevy::render::camera::Camera;
 
+use animation::AnimationPlugin;
 use grid::Grid;
 use mouse_position::MousePositionPlugin;
 use selection_box::SelectionBoxPlugin;
@@ -32,6 +34,7 @@ fn main() {
         .add_plugin(MousePositionPlugin)
         .add_plugin(SelectionBoxPlugin)
         .add_plugin(UnitPlugin)
+        .add_plugin(AnimationPlugin)
         .add_startup_system(setup.system())
         .add_startup_system(map_setup::setup.system())
         .add_system(camera_movement.system())

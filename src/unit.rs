@@ -1,8 +1,11 @@
+use crate::animation::{Animation, Animations};
 use crate::grid::Grid;
 use crate::mouse_position::MouseWorldPosition;
 use crate::path_finding::PathFinder;
 use crate::tiled::Map;
 use bevy::prelude::*;
+
+use std::collections::HashMap;
 
 pub struct UnitPlugin;
 
@@ -24,6 +27,11 @@ fn spawn_unit(
     translation: Vec3,
     texture_atlas_handle: Handle<TextureAtlas>,
 ) {
+    let mut animations = HashMap::<String, Animation>::new();
+
+    animations.insert("idle".to_string(), Animation::new(vec![1, 2, 3, 4]));
+    animations.insert("moving".to_string(), Animation::new(vec![4, 5, 6, 7, 8, 9]));
+
     commands
         .spawn(SpriteSheetBundle {
             texture_atlas: texture_atlas_handle,
@@ -38,7 +46,8 @@ fn spawn_unit(
             },
             ..Default::default()
         })
-        .with(Timer::from_seconds(0.05, true))
+        .with(Timer::from_seconds(0.1, true))
+        .with(Animations::new("idle".to_string(), animations))
         .with(MoveOrder { path: vec![] })
         .with(Unit { selected: false });
 }
@@ -72,16 +81,6 @@ fn setup(
         Vec3::new(23.0, 42.0, 500.0),
         texture_atlas_handle.clone(),
     );
-}
-
-fn animation(time: Res<Time>, mut query: Query<(&Unit, &mut Timer, &mut TextureAtlasSprite)>) {
-    for (_unit, mut timer, mut sprite) in query.iter_mut() {
-        timer.tick(time.delta().as_secs_f32());
-
-        if timer.finished() {
-            sprite.index = (sprite.index + 1) % 11;
-        }
-    }
 }
 
 pub struct MoveOrder {
@@ -122,50 +121,50 @@ fn tile_to_world_coord(tile_pos: (i32, i32), map: &Map) -> Vec2 {
 fn move_system(
     time: Res<Time>,
     map: Res<Map>,
-    mut query: Query<(&Unit, &mut Transform, &mut MoveOrder, &mut Timer)>,
+    mut query: Query<(&Unit, &mut Transform, &mut MoveOrder, &mut Animations)>,
 ) {
-    for (_unit, mut transform, mut move_order, mut timer) in query.iter_mut() {
-        timer.tick(time.delta().as_secs_f32());
+    for (_unit, mut transform, mut move_order, mut animations) in query.iter_mut() {
+        if move_order.path.is_empty() {
+            animations.current_animation = "idle".to_string();
+        } else {
+            animations.current_animation = "moving".to_string();
 
-        if timer.finished() {
-            if !move_order.path.is_empty() {
-                let order = move_order.path[0];
+            let order = move_order.path[0];
 
-                let mut x = transform.translation.x;
-                let mut y = transform.translation.y;
+            let mut x = transform.translation.x;
+            let mut y = transform.translation.y;
 
-                let world_coords = tile_to_world_coord(order, &map);
+            let world_coords = tile_to_world_coord(order, &map);
 
-                info!("Going to Tile: {:?}", order);
+            let order_x = world_coords.x;
+            let order_y = world_coords.y;
 
-                let order_x = world_coords.x;
-                let order_y = world_coords.y;
+            let speed = 48.0;
 
-                info!("In World Coordinates: {:?}", world_coords);
-
-                if (order_x - transform.translation.x).abs() < 5.0 {
-                    x = order_x;
-                } else if order_x > transform.translation.x {
-                    x = transform.translation.x + 5.0;
-                } else if order_x < transform.translation.x {
-                    x = transform.translation.x - 5.0;
-                }
-
-                if (order_y - transform.translation.y).abs() < 5.0 {
-                    y = order_y
-                } else if order_y > transform.translation.y {
-                    y = transform.translation.y + 5.0;
-                } else if order_y < transform.translation.y {
-                    y = transform.translation.y - 5.0;
-                }
-
-                if x == order_x && y == order_y {
-                    // We completed that path node
-                    move_order.path.remove(0);
-                }
-
-                transform.translation = Vec3::new(x, y, 999.0);
+            if (order_x - transform.translation.x).abs() < time.delta_seconds() * speed {
+                x = order_x;
+            } else if order_x > transform.translation.x {
+                transform.rotation = Quat::default();
+                x = transform.translation.x + time.delta_seconds() * speed;
+            } else if order_x < transform.translation.x {
+                transform.rotation = Quat::from_rotation_y(std::f32::consts::PI);
+                x = transform.translation.x - time.delta_seconds() * speed;
             }
+
+            if (order_y - transform.translation.y).abs() < time.delta_seconds() * speed {
+                y = order_y
+            } else if order_y > transform.translation.y {
+                y = transform.translation.y + time.delta_seconds() * speed;
+            } else if order_y < transform.translation.y {
+                y = transform.translation.y - time.delta_seconds() * speed;
+            }
+
+            if x == order_x && y == order_y {
+                // We completed that path node
+                move_order.path.remove(0);
+            }
+
+            transform.translation = Vec3::new(x, y, 999.0);
         }
     }
 }

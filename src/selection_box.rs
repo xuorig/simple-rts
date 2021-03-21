@@ -21,7 +21,7 @@ fn setup(commands: &mut Commands, mut materials: ResMut<Assets<ColorMaterial>>) 
     commands
         .spawn(SpriteBundle {
             material: materials.add(Color::rgba(0.0, 255.0, 0.0, 0.2).into()),
-            transform: Transform::from_xyz(0.0, -215.0, 999.0),
+            transform: Transform::from_xyz(0.0, -215.0, 500.0),
             sprite: Sprite::new(Vec2::new(50.0, 50.0)),
             visible: Visible {
                 is_visible: false,
