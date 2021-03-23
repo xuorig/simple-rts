@@ -164,7 +164,7 @@ fn move_system(
 
             let diff = transform.translation.truncate() - order_coords;
 
-            if diff.length() < 16.0 {
+            if diff.length() < 12.0 {
                 move_order.path.remove(0);
             }
         }

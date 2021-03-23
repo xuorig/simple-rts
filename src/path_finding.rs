@@ -14,7 +14,7 @@ pub struct PathFinder<'a> {
     pub world_height: i32,
 }
 
-type Location = (i32, i32);
+pub type Location = (i32, i32);
 
 impl<'a> PathFinder<'a> {
     pub fn new(map: &'a Map, grid: &'a Grid) -> Self {
@@ -94,12 +94,13 @@ impl<'a> PathFinder<'a> {
     }
 
     fn heuristic(&self, a: Location, b: Location) -> i32 {
-        // Euclidean Distance
-        // let euclidian_dist = (((a.0 - b.1).pow(2) + (a.0 - b.1).pow(2)) as f64).sqrt();
-        // euclidian_dist as i32
-
         // Chebyshev Distance
-        std::cmp::max(b.0 - a.0, b.1 - a.1)
+        // std::cmp::max(b.0 - a.0, b.1 - a.1)
+        //
+        // Euclidean Distance
+
+        let euclidian_dist = (((a.0 - b.1).pow(2) + (a.0 - b.1).pow(2)) as f64).sqrt();
+        euclidian_dist as i32
     }
 }
 

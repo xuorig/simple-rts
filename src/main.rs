@@ -1,4 +1,5 @@
 mod animation;
+mod funnel;
 mod grid;
 mod map_setup;
 mod mouse_position;
