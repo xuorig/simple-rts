@@ -11,6 +11,7 @@ pub enum TileType {
 #[derive(Debug)]
 pub struct Grid {
     grid: Vec<Vec<TileType>>,
+    pub tile_size: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -19,7 +20,10 @@ pub struct GridError;
 impl Grid {
     /// Builds a collision grid for path finding from a Tiled map
     pub fn from_tiled_map(map: &Map) -> Result<Grid, GridError> {
-        let mut grid = Grid { grid: vec![] };
+        let mut grid = Grid {
+            grid: vec![],
+            tile_size: map.tile_width as f32,
+        };
 
         for y in 0..map.height {
             let mut current_row = vec![];
@@ -97,6 +101,18 @@ impl Grid {
         }
 
         result
+    }
+
+    pub fn map_width(&self) -> f32 {
+        if self.grid.first().is_some() {
+            self.grid.first().unwrap().len() as f32 * self.tile_size
+        } else {
+            0.0
+        }
+    }
+
+    pub fn map_height(&self) -> f32 {
+        self.grid.len() as f32 * self.tile_size
     }
 }
 

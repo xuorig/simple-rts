@@ -1,7 +1,7 @@
 use crate::animation::{Animation, Animations};
-use crate::grid::Grid;
 use crate::mouse_position::MouseWorldPosition;
-use crate::path_finding::PathFinder;
+use crate::path_finding;
+use crate::path_finding::grid::Grid;
 use crate::tiled::Map;
 use bevy::prelude::*;
 
@@ -92,7 +92,7 @@ fn setup(
 }
 
 pub struct MoveOrder {
-    pub path: Vec<(i32, i32)>,
+    pub path: Vec<Vec2>,
 }
 
 fn order_system(
@@ -105,14 +105,21 @@ fn order_system(
     if mouse_buttons.just_pressed(MouseButton::Right) {
         for (transform, mut unit, mut move_order) in query.iter_mut() {
             if unit.selected {
-                let path_finder = PathFinder::new(&map, &grid);
-                let best_path = path_finder.path(transform.translation, mouse_position.0);
+                let mut best_path = path_finding::find_path(
+                    Vec2::from(transform.translation),
+                    Vec2::from(mouse_position.0),
+                    &grid,
+                );
 
                 info!("Mouse Click {:?}", mouse_position);
                 info!("Best Path: {:?}", best_path);
 
                 unit.velocity = Vec2::zero();
-                move_order.path = best_path;
+
+                // We're here already
+                best_path.remove(0);
+
+                move_order.path = best_path
             }
         }
     }
@@ -140,8 +147,9 @@ fn move_system(
         } else {
             animations.play("moving".to_string());
 
-            let order = move_order.path[0];
-            let order_coords = tile_to_world_coord(order, &map);
+            let order_coords = move_order.path[0];
+
+            info!("Seeking {}", order_coords);
 
             let desired = order_coords - transform.translation.truncate();
             let desired_velocity = desired * (unit.max_speed / desired.length());
@@ -153,6 +161,8 @@ fn move_system(
 
             let speed = unit.velocity.length();
 
+            info!("Speed {}", speed);
+
             if speed > unit.max_speed {
                 unit.velocity = unit.velocity * (4.0 / speed);
             }
@@ -161,6 +171,8 @@ fn move_system(
 
             transform.translation.x += new_translation.x;
             transform.translation.y += new_translation.y;
+
+            info!("Unit Location {}", transform.translation);
 
             let diff = transform.translation.truncate() - order_coords;
 

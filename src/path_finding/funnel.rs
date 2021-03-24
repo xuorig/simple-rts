@@ -1,7 +1,12 @@
-use crate::path_finding::Location;
 use bevy::prelude::*;
 
+type Location = (i32, i32);
+
 /// A portal is kind of a door, it has a left and right position
+/// Left and Right are from the perspective of walking through the door
+///      l
+/// o ->
+///      r
 #[derive(Debug)]
 pub struct Portal {
     left: Vec2,
@@ -24,7 +29,7 @@ pub struct Funnel {
 impl Funnel {
     /// Creates a new Funnel (A list of portals or channels)
     /// Given a path of waypoints or nodes, most likely produced by something like A*
-    fn from_path(start: Vec2, end: Vec2, path: Vec<Location>, tile_size: f32) -> Self {
+    pub fn from_path(start: Vec2, end: Vec2, path: Vec<Location>, tile_size: f32) -> Self {
         Self {
             start,
             end,
@@ -32,6 +37,8 @@ impl Funnel {
         }
     }
 
+    /// Generates a list of Portals given a path in a grid
+    /// The grid path members are Tuples of i32 but the portals are in world coordinates (Vec2)
     fn generate_portals(path: Vec<Location>, grid_world_size: f32) -> Vec<Portal> {
         let mut portals = vec![];
 
@@ -42,14 +49,14 @@ impl Funnel {
                 let diff = (next_node.0 - loc.0, next_node.1 - loc.1);
 
                 let portal = match diff {
-                    // Right above us
+                    // Top
                     (0, 1) => Portal {
-                        right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size,
-                            next_node.1 as f32 * grid_world_size,
-                        ),
                         left: Vec2::new(
                             next_node.0 as f32 * grid_world_size,
+                            next_node.1 as f32 * grid_world_size,
+                        ),
+                        right: Vec2::new(
+                            next_node.0 as f32 * grid_world_size + grid_world_size,
                             next_node.1 as f32 * grid_world_size,
                         ),
                     },
@@ -66,21 +73,19 @@ impl Funnel {
                         ),
                     },
 
-                    // To our right
+                    // Right
                     (1, 0) => Portal {
                         left: Vec2::new(
                             next_node.0 as f32 * grid_world_size,
-                            next_node.1 as f32 * grid_world_size,
+                            next_node.1 as f32 * grid_world_size + grid_world_size,
                         ),
                         right: Vec2::new(
                             next_node.0 as f32 * grid_world_size,
-                            next_node.1 as f32 * grid_world_size + grid_world_size,
+                            next_node.1 as f32 * grid_world_size,
                         ),
                     },
 
-                    // Diagonal Bottom-Right
-                    // [ ] l
-                    //  r [ ]
+                    // Bottom-Right
                     (1, -1) => Portal {
                         left: Vec2::new(
                             next_node.0 as f32 * grid_world_size + grid_world_size / 2.0,
@@ -92,49 +97,43 @@ impl Funnel {
                         ),
                     },
 
-                    // Bellow Us
-                    // [ ]
-                    // l r
-                    // [ ]
+                    // Bottom
                     (0, -1) => Portal {
-                        right: Vec2::new(
+                        left: Vec2::new(
                             next_node.0 as f32 * grid_world_size + grid_world_size,
                             next_node.1 as f32 * grid_world_size + grid_world_size,
                         ),
-                        left: Vec2::new(
+                        right: Vec2::new(
                             next_node.0 as f32 * grid_world_size,
                             next_node.1 as f32 * grid_world_size + grid_world_size,
                         ),
                     },
 
-                    // Diagonal Bottom-Left
-                    //   r [ ]
-                    // [  ] l
+                    // Bottom-Left
                     (-1, -1) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size * 1.5,
-                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0,
-                        ),
-                        right: Vec2::new(
                             next_node.0 as f32 * grid_world_size + grid_world_size / 2.0,
                             next_node.1 as f32 * grid_world_size + grid_world_size * 1.5,
                         ),
+                        right: Vec2::new(
+                            next_node.0 as f32 * grid_world_size + grid_world_size * 1.5,
+                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0,
+                        ),
                     },
 
-                    // To our Left
-                    // [ ]|<-[ ]
+                    // Left
                     (-1, 0) => Portal {
-                        right: Vec2::new(
+                        left: Vec2::new(
                             next_node.0 as f32 * grid_world_size + grid_world_size,
                             next_node.1 as f32 * grid_world_size + grid_world_size,
                         ),
-                        left: Vec2::new(
+                        right: Vec2::new(
                             next_node.0 as f32 * grid_world_size + grid_world_size,
                             next_node.1 as f32 * grid_world_size,
                         ),
                     },
 
-                    // Diagonal Top-Left
+                    // Top-Left
                     (-1, 1) => Portal {
                         left: Vec2::new(
                             next_node.0 as f32 * grid_world_size + grid_world_size / 2.0,
@@ -156,10 +155,9 @@ impl Funnel {
         portals
     }
 
-    /// Returns the optimal path across the grid
-    /// running the funnel / string pulling algorithm
-    /// Simple Stupid Funnel Algorithm: https://digestingduck.blogspot.com/2010/03/simple-stupid-funnel-algorithm.html
-    /// Paper: https://www.aaai.org/Papers/AAAI/2006/AAAI06-148.pdf
+    /// Returns the optimal path across the grid running the funnel / string pulling algorithm
+    /// See Simple Stupid Funnel Algorithm: https://digestingduck.blogspot.com/2010/03/simple-stupid-funnel-algorithm.html
+    /// See Paper: https://www.aaai.org/Papers/AAAI/2006/AAAI06-148.pdf
     pub fn string_pull(&self) -> Vec<Vec2> {
         let mut points: Vec<Vec2> = vec![];
         points.push(self.start);
@@ -179,13 +177,15 @@ impl Funnel {
         let mut i = 1;
 
         while i < self.portals.len() {
-            println!("Index: {}", i);
-
             let portal = self.portals.get(i).unwrap();
 
             println!(
-                "STATE: apex={} portal_left={} portal.right={}",
-                apex, portal_left, portal_right
+                "Apex = {} Current Portal R = {} Next Portal R = {}",
+                apex, portal_right, portal.right
+            );
+            println!(
+                "Apex = {} Current Portal L = {} Next Portal L = {}",
+                apex, portal_left, portal.left
             );
 
             // Start with updating the right vertex
@@ -197,33 +197,33 @@ impl Funnel {
                     // No crossing, we can go to the next portal.
                     portal_right = portal.right;
                     right_index = i;
-                    println!("Tightening Tunnel, right_index={}", right_index);
+                    println!("Advancing Right Portal");
                 } else {
                     // If we crossed the left portal, we found a point
                     points.push(portal_left);
                     apex = portal_left;
                     right_index = left_index;
                     i = left_index;
-                    println!("New Apex to the LEFT! apex={}, i={}", apex, i);
+                    println!("Right Crossed Left: {} is now apex", portal_left);
                 }
             }
 
             // Now update the left vertex
             // Don't update if we're outside the funnel
-            if Funnel::cross_product_magnitude_2d(apex, portal_left, portal.left) <= 0.0 {
+            if Funnel::cross_product_magnitude_2d(apex, portal_left, portal.left) >= 0.0 {
                 // If we crossed the left portal, we found a point
                 if apex == portal_left
-                    || Funnel::cross_product_magnitude_2d(apex, portal_right, portal.left) > 0.0
+                    || Funnel::cross_product_magnitude_2d(apex, portal_right, portal.left) < 0.0
                 {
                     portal_left = portal.left;
                     left_index = i;
-                    println!("Tightening Tunnel, left_index={}", left_index);
+                    println!("Advancing Left Portal")
                 } else {
                     points.push(portal_right);
                     apex = portal_right;
                     left_index = right_index;
                     i = right_index;
-                    println!("New Apex to the RIGHT! apex={}, i={}", apex, i);
+                    println!("Left Crossed Right: {} is now apex", portal_right);
                 }
             }
 
@@ -327,28 +327,26 @@ mod tests {
     }
 
     #[test]
-    fn test_string_pull() {
-        //
-        //    [ ][ ][ ]
-        //    [ ]   [ ]
-        // [ ][ ]   [ ]
+    fn test_string_pull_dog_leg() {
+        //    [6]
+        //    [5]
+        //       [4]
+        //    [3]
+        //    [2]
+        // [1]
         let funnel = Funnel::from_path(
             Vec2::zero(),
-            Vec2::new(3.5 * 32.0, 16.0),
-            vec![
-                (0, 0),
-                (1, 0),
-                (1, 1),
-                (1, 2),
-                (2, 2),
-                (3, 2),
-                (3, 1),
-                (3, 0),
-            ],
+            Vec2::new(48.0, 32.0 * 6.0),
+            vec![(0, 0), (1, 1), (1, 2), (2, 3), (1, 4), (1, 5)],
             32.0,
         );
 
-        let expected: Vec<Vec2> = vec![];
+        let expected: Vec<Vec2> = vec![
+            Vec2::zero(),
+            Vec2::new(32.0, 64.0),
+            Vec2::new(48.0, 112.0),
+            Vec2::new(48.0, 192.0),
+        ];
         assert_eq!(expected, funnel.string_pull());
     }
 

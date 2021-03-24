@@ -4,29 +4,16 @@ use std::collections::HashMap;
 
 use bevy::prelude::*;
 
-use crate::grid::Grid;
-use crate::tiled::Map;
+use crate::path_finding::grid::Grid;
 
 pub struct PathFinder<'a> {
-    pub map: &'a Map,
     pub grid: &'a Grid,
-    pub world_width: i32,
-    pub world_height: i32,
 }
 
 pub type Location = (i32, i32);
 
 impl<'a> PathFinder<'a> {
-    pub fn new(map: &'a Map, grid: &'a Grid) -> Self {
-        Self {
-            map,
-            grid,
-            world_width: map.width * map.tile_width,
-            world_height: map.height * map.tile_height,
-        }
-    }
-
-    pub fn path(&self, from: Vec3, to: Vec3) -> Vec<Location> {
+    pub fn path(&self, from: Vec2, to: Vec2) -> Vec<Location> {
         let from_location = self.world_to_grid_coordinates(from);
         let to_location = self.world_to_grid_coordinates(to);
 
@@ -67,10 +54,10 @@ impl<'a> PathFinder<'a> {
         vec![]
     }
 
-    fn world_to_grid_coordinates(&self, position: Vec3) -> Location {
+    fn world_to_grid_coordinates(&self, position: Vec2) -> Location {
         (
-            ((position.x + self.world_width as f32 / 2.0) / self.map.tile_width as f32) as i32,
-            ((position.y + self.world_height as f32 / 2.0) / self.map.tile_height as f32) as i32,
+            ((position.x + self.grid.map_width() / 2.0) / self.grid.tile_size) as i32,
+            ((position.y + self.grid.map_height() / 2.0) / self.grid.tile_size) as i32,
         )
     }
 

@@ -1,6 +1,4 @@
 mod animation;
-mod funnel;
-mod grid;
 mod map_setup;
 mod mouse_position;
 mod path_finding;
@@ -12,14 +10,14 @@ use bevy::prelude::*;
 use bevy::render::camera::Camera;
 
 use animation::AnimationPlugin;
-use grid::Grid;
 use mouse_position::MousePositionPlugin;
+use path_finding::grid::Grid;
 use selection_box::SelectionBoxPlugin;
 use unit::UnitPlugin;
 
 fn main() {
     let map = tiled::Map::from_json_file("assets/basic_map.json").expect("Couldnt load map");
-    let map_grid = Grid::from_tiled_map(&map).expect("Failed to generate collision grid");
+    let path_finding_grid = Grid::from_tiled_map(&map).expect("Failed to generate collision grid");
 
     App::build()
         .insert_resource(WindowDescriptor {
@@ -29,7 +27,7 @@ fn main() {
             vsync: false,
             ..Default::default()
         })
-        .insert_resource(map_grid)
+        .insert_resource(path_finding_grid)
         .insert_resource(map)
         .add_plugins(DefaultPlugins)
         .add_plugin(MousePositionPlugin)
