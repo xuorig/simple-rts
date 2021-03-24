@@ -68,11 +68,11 @@ impl Funnel {
 
                     // To our right
                     (1, 0) => Portal {
-                        right: Vec2::new(
+                        left: Vec2::new(
                             next_node.0 as f32 * grid_world_size,
                             next_node.1 as f32 * grid_world_size,
                         ),
-                        left: Vec2::new(
+                        right: Vec2::new(
                             next_node.0 as f32 * grid_world_size,
                             next_node.1 as f32 * grid_world_size + grid_world_size,
                         ),
@@ -135,9 +135,6 @@ impl Funnel {
                     },
 
                     // Diagonal Top-Left
-                    // (-1, 1) => {}
-                    // [ ] r
-                    //  l [ ]
                     (-1, 1) => Portal {
                         left: Vec2::new(
                             next_node.0 as f32 * grid_world_size + grid_world_size / 2.0,
@@ -164,7 +161,78 @@ impl Funnel {
     /// Simple Stupid Funnel Algorithm: https://digestingduck.blogspot.com/2010/03/simple-stupid-funnel-algorithm.html
     /// Paper: https://www.aaai.org/Papers/AAAI/2006/AAAI06-148.pdf
     pub fn string_pull(&self) -> Vec<Vec2> {
-        vec![]
+        let mut points: Vec<Vec2> = vec![];
+        points.push(self.start);
+
+        // Setup our initial search state
+        let first_portal = self.portals.get(0);
+        if first_portal.is_none() {
+            return points;
+        }
+
+        let mut apex = self.start;
+        let mut portal_left = first_portal.unwrap().left;
+        let mut portal_right = first_portal.unwrap().right;
+
+        let mut left_index = 0;
+        let mut right_index = 0;
+        let mut i = 1;
+
+        while i < self.portals.len() {
+            println!("Index: {}", i);
+
+            let portal = self.portals.get(i).unwrap();
+
+            println!(
+                "STATE: apex={} portal_left={} portal.right={}",
+                apex, portal_left, portal_right
+            );
+
+            // Start with updating the right vertex
+            // Don't update if we're outside the funnel
+            if Funnel::cross_product_magnitude_2d(apex, portal_right, portal.right) <= 0.0 {
+                if apex == portal_right
+                    || Funnel::cross_product_magnitude_2d(apex, portal_left, portal.right) > 0.0
+                {
+                    // No crossing, we can go to the next portal.
+                    portal_right = portal.right;
+                    right_index = i;
+                    println!("Tightening Tunnel, right_index={}", right_index);
+                } else {
+                    // If we crossed the left portal, we found a point
+                    points.push(portal_left);
+                    apex = portal_left;
+                    right_index = left_index;
+                    i = left_index;
+                    println!("New Apex to the LEFT! apex={}, i={}", apex, i);
+                }
+            }
+
+            // Now update the left vertex
+            // Don't update if we're outside the funnel
+            if Funnel::cross_product_magnitude_2d(apex, portal_left, portal.left) <= 0.0 {
+                // If we crossed the left portal, we found a point
+                if apex == portal_left
+                    || Funnel::cross_product_magnitude_2d(apex, portal_right, portal.left) > 0.0
+                {
+                    portal_left = portal.left;
+                    left_index = i;
+                    println!("Tightening Tunnel, left_index={}", left_index);
+                } else {
+                    points.push(portal_right);
+                    apex = portal_right;
+                    left_index = right_index;
+                    i = right_index;
+                    println!("New Apex to the RIGHT! apex={}, i={}", apex, i);
+                }
+            }
+
+            i += 1;
+        }
+
+        points.push(self.end);
+
+        points
     }
 
     // Cross Product Magniture
@@ -225,17 +293,58 @@ mod tests {
     }
 
     #[test]
-    fn test_path() {
-        //       [ ]
-        //       [ ]
-        //    [ ]
-        // [ ]
-        // [ ]
-        // [ ]
+    fn test_string_pull_simple() {
+        // [1]|[2]
+        // [x]|[3]
+        let funnel = Funnel::from_path(
+            Vec2::new(1.5 * 32.0, 1.5 * 32.0),
+            Vec2::new(2.5 * 32.0, 16.0),
+            vec![(0, 1), (1, 1), (1, 0)],
+            32.0,
+        );
+
+        // First lets make sure we generate the right portals
+        assert_eq!(
+            vec![
+                Portal {
+                    left: Vec2::new(32.0, 32.0),
+                    right: Vec2::new(32.0, 64.0)
+                },
+                Portal {
+                    left: Vec2::new(32.0, 32.0),
+                    right: Vec2::new(64.0, 32.0)
+                }
+            ],
+            funnel.portals
+        );
+
+        let expected: Vec<Vec2> = vec![
+            Vec2::new(48.0, 48.0),
+            Vec2::new(32.0, 32.0),
+            Vec2::new(80.0, 16.0),
+        ];
+        assert_eq!(expected, funnel.string_pull());
+    }
+
+    #[test]
+    fn test_string_pull() {
+        //
+        //    [ ][ ][ ]
+        //    [ ]   [ ]
+        // [ ][ ]   [ ]
         let funnel = Funnel::from_path(
             Vec2::zero(),
-            Vec2::zero(),
-            vec![(0, 0), (0, 1), (0, 2), (1, 3), (2, 4), (2, 5)],
+            Vec2::new(3.5 * 32.0, 16.0),
+            vec![
+                (0, 0),
+                (1, 0),
+                (1, 1),
+                (1, 2),
+                (2, 2),
+                (3, 2),
+                (3, 1),
+                (3, 0),
+            ],
             32.0,
         );
 
