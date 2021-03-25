@@ -9,8 +9,8 @@ type Location = (i32, i32);
 ///      r
 #[derive(Debug)]
 pub struct Portal {
-    left: Vec2,
-    right: Vec2,
+    pub left: Vec2,
+    pub right: Vec2,
 }
 
 impl PartialEq for Portal {
@@ -23,23 +23,35 @@ impl PartialEq for Portal {
 pub struct Funnel {
     start: Vec2,
     end: Vec2,
-    portals: Vec<Portal>,
+    pub portals: Vec<Portal>,
 }
 
 impl Funnel {
     /// Creates a new Funnel (A list of portals or channels)
     /// Given a path of waypoints or nodes, most likely produced by something like A*
-    pub fn from_path(start: Vec2, end: Vec2, path: Vec<Location>, tile_size: f32) -> Self {
+    pub fn from_path(
+        start: Vec2,
+        end: Vec2,
+        path: Vec<Location>,
+        tile_size: f32,
+        world_width: f32,
+        world_height: f32,
+    ) -> Self {
         Self {
             start,
             end,
-            portals: Self::generate_portals(path, tile_size),
+            portals: Self::generate_portals(path, tile_size, world_width, world_height),
         }
     }
 
     /// Generates a list of Portals given a path in a grid
     /// The grid path members are Tuples of i32 but the portals are in world coordinates (Vec2)
-    fn generate_portals(path: Vec<Location>, grid_world_size: f32) -> Vec<Portal> {
+    fn generate_portals(
+        path: Vec<Location>,
+        grid_world_size: f32,
+        world_width: f32,
+        world_height: f32,
+    ) -> Vec<Portal> {
         let mut portals = vec![];
 
         for (i, loc) in path.iter().enumerate() {
@@ -52,96 +64,124 @@ impl Funnel {
                     // Top
                     (0, 1) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size,
-                            next_node.1 as f32 * grid_world_size,
+                            next_node.0 as f32 * grid_world_size - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size,
-                            next_node.1 as f32 * grid_world_size,
+                            next_node.0 as f32 * grid_world_size + grid_world_size
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size - world_height / 2.0,
                         ),
                     },
 
                     // Diagonal Top-Right
                     (1, 1) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size - grid_world_size / 2.0,
-                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0,
+                            next_node.0 as f32 * grid_world_size
+                                - grid_world_size / 2.0
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0,
-                            next_node.1 as f32 * grid_world_size - grid_world_size / 2.0,
+                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size
+                                - grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                     },
 
                     // Right
                     (1, 0) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size,
-                            next_node.1 as f32 * grid_world_size + grid_world_size,
+                            next_node.0 as f32 * grid_world_size - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size
+                                - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size,
-                            next_node.1 as f32 * grid_world_size,
+                            next_node.0 as f32 * grid_world_size - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size - world_height / 2.0,
                         ),
                     },
 
                     // Bottom-Right
                     (1, -1) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0,
-                            next_node.1 as f32 * grid_world_size + grid_world_size * 1.5,
+                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size * 1.5
+                                - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size - grid_world_size / 2.0,
-                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0,
+                            next_node.0 as f32 * grid_world_size
+                                - grid_world_size / 2.0
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                     },
 
                     // Bottom
                     (0, -1) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size,
-                            next_node.1 as f32 * grid_world_size + grid_world_size,
+                            next_node.0 as f32 * grid_world_size + grid_world_size
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size
+                                - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size,
-                            next_node.1 as f32 * grid_world_size + grid_world_size,
+                            next_node.0 as f32 * grid_world_size - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size
+                                - world_height / 2.0,
                         ),
                     },
 
                     // Bottom-Left
                     (-1, -1) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0,
-                            next_node.1 as f32 * grid_world_size + grid_world_size * 1.5,
+                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size * 1.5
+                                - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size * 1.5,
-                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0,
+                            next_node.0 as f32 * grid_world_size + grid_world_size * 1.5
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                     },
 
                     // Left
                     (-1, 0) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size,
-                            next_node.1 as f32 * grid_world_size + grid_world_size,
+                            next_node.0 as f32 * grid_world_size + grid_world_size
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size
+                                - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size,
-                            next_node.1 as f32 * grid_world_size,
+                            next_node.0 as f32 * grid_world_size + grid_world_size
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size - world_height / 2.0,
                         ),
                     },
 
                     // Top-Left
                     (-1, 1) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0,
-                            next_node.1 as f32 * grid_world_size - grid_world_size / 2.0,
+                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size
+                                - grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size * 1.5,
-                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0,
+                            next_node.0 as f32 * grid_world_size + grid_world_size * 1.5
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                     },
 
@@ -263,6 +303,8 @@ mod tests {
             Vec2::zero(),
             vec![(0, 0), (0, 1), (0, 2), (1, 3), (2, 4), (2, 5)],
             32.0,
+            320.0,
+            320.0,
         );
 
         assert_eq!(
@@ -301,6 +343,8 @@ mod tests {
             Vec2::new(2.5 * 32.0, 16.0),
             vec![(0, 1), (1, 1), (1, 0)],
             32.0,
+            320.0,
+            320.0,
         );
 
         // First lets make sure we generate the right portals
@@ -339,6 +383,8 @@ mod tests {
             Vec2::new(48.0, 32.0 * 6.0),
             vec![(0, 0), (1, 1), (1, 2), (2, 3), (1, 4), (1, 5)],
             32.0,
+            320.0,
+            320.0,
         );
 
         let expected: Vec<Vec2> = vec![

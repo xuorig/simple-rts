@@ -96,23 +96,41 @@ pub struct MoveOrder {
 }
 
 fn order_system(
+    commands: &mut Commands,
     mouse_buttons: Res<Input<MouseButton>>,
     mouse_position: Res<MouseWorldPosition>,
     grid: Res<Grid>,
-    map: Res<Map>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     mut query: Query<(&Transform, &mut Unit, &mut MoveOrder)>,
 ) {
     if mouse_buttons.just_pressed(MouseButton::Right) {
         for (transform, mut unit, mut move_order) in query.iter_mut() {
             if unit.selected {
+                let astar_path = path_finding::astar(
+                    Vec2::from(transform.translation),
+                    Vec2::from(mouse_position.0),
+                    &grid,
+                );
+
+                let blue = materials.add(Color::rgba(0.0, 0.0, 255.0, 0.2).into());
+                path_finding::draw_astar_path(astar_path, commands, blue);
+
+                let portals = path_finding::funnel_portals(
+                    Vec2::from(transform.translation),
+                    Vec2::from(mouse_position.0),
+                    &grid,
+                );
+                let red = materials.add(Color::rgba(255.0, 0.0, 0.0, 0.2).into());
+                path_finding::draw_funnel_portals(portals, commands, red);
+
                 let mut best_path = path_finding::find_path(
                     Vec2::from(transform.translation),
                     Vec2::from(mouse_position.0),
                     &grid,
                 );
 
-                info!("Mouse Click {:?}", mouse_position);
-                info!("Best Path: {:?}", best_path);
+                let black = materials.add(Color::rgba(0.0, 0.0, 0.0, 0.2).into());
+                path_finding::draw_funnel_path(best_path.clone(), commands, black);
 
                 unit.velocity = Vec2::zero();
 
@@ -124,17 +142,6 @@ fn order_system(
         }
     }
 }
-
-fn tile_to_world_coord(tile_pos: (i32, i32), map: &Map) -> Vec2 {
-    Vec2::new(
-        (tile_pos.0 * map.tile_width) as f32 + (map.tile_width / 2) as f32
-            - (map.width * map.tile_width / 2) as f32,
-        (tile_pos.1 * map.tile_height) as f32 + (map.tile_height / 2) as f32
-            - (map.height * map.tile_height / 2) as f32,
-    )
-}
-
-const ARRIVAL_RADIUS: f32 = 8.0;
 
 fn move_system(
     time: Res<Time>,
@@ -149,8 +156,6 @@ fn move_system(
 
             let order_coords = move_order.path[0];
 
-            info!("Seeking {}", order_coords);
-
             let desired = order_coords - transform.translation.truncate();
             let desired_velocity = desired * (unit.max_speed / desired.length());
             let force = desired_velocity - unit.velocity;
@@ -161,8 +166,6 @@ fn move_system(
 
             let speed = unit.velocity.length();
 
-            info!("Speed {}", speed);
-
             if speed > unit.max_speed {
                 unit.velocity = unit.velocity * (4.0 / speed);
             }
@@ -171,8 +174,6 @@ fn move_system(
 
             transform.translation.x += new_translation.x;
             transform.translation.y += new_translation.y;
-
-            info!("Unit Location {}", transform.translation);
 
             let diff = transform.translation.truncate() - order_coords;
 
