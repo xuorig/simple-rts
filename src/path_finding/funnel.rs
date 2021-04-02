@@ -77,12 +77,18 @@ impl Funnel {
                     // Diagonal Top-Right
                     (1, 1) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size - world_width / 2.0,
-                            next_node.1 as f32 * grid_world_size - world_height / 2.0,
+                            next_node.0 as f32 * grid_world_size
+                                - grid_world_size / 2.0
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size - world_width / 2.0,
-                            next_node.1 as f32 * grid_world_size - world_height / 2.0,
+                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_width / 2.0,
+                            next_node.1 as f32 * grid_world_size
+                                - grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                     },
 
@@ -165,14 +171,17 @@ impl Funnel {
                     // Top-Left
                     (-1, 1) => Portal {
                         left: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size
+                            next_node.0 as f32 * grid_world_size + grid_world_size / 2.0
                                 - world_width / 2.0,
-                            next_node.1 as f32 * grid_world_size - world_height / 2.0,
+                            next_node.1 as f32 * grid_world_size
+                                - grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                         right: Vec2::new(
-                            next_node.0 as f32 * grid_world_size + grid_world_size
+                            next_node.0 as f32 * grid_world_size + grid_world_size * 1.5
                                 - world_width / 2.0,
-                            next_node.1 as f32 * grid_world_size - world_height / 2.0,
+                            next_node.1 as f32 * grid_world_size + grid_world_size / 2.0
+                                - world_height / 2.0,
                         ),
                     },
 
