@@ -91,11 +91,24 @@ impl Grid {
                 && neighbor_location.1 < self.grid.len() as i32;
 
             if inbounds {
-                match self.at(neighbor_location) {
-                    TileType::WALKABLE => {
+                // If we're a diagonal, we consider the tiles on each side too
+                if neighbor_location.0 != position.0 && neighbor_location.1 != position.1 {
+                    let surrounding_tile_x = (position.0 + i, position.1);
+                    let surrounding_tile_y = (position.0, position.1 + j);
+
+                    if self.at(neighbor_location) == TileType::WALKABLE
+                        && self.at(surrounding_tile_x) == TileType::WALKABLE
+                        && self.at(surrounding_tile_y) == TileType::WALKABLE
+                    {
                         result.push(neighbor_location);
                     }
-                    _ => {}
+                } else {
+                    match self.at(neighbor_location) {
+                        TileType::WALKABLE => {
+                            result.push(neighbor_location);
+                        }
+                        _ => {}
+                    };
                 }
             }
         }
