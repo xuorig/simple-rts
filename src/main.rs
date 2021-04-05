@@ -1,6 +1,7 @@
 mod animation;
 mod map_setup;
 mod mouse_position;
+mod movement;
 mod path_finding;
 mod selection_box;
 mod tiled;
@@ -14,6 +15,8 @@ use mouse_position::MousePositionPlugin;
 use path_finding::grid::Grid;
 use selection_box::SelectionBoxPlugin;
 use unit::UnitPlugin;
+
+use movement::MovementPlugin;
 
 fn main() {
     let map = tiled::Map::from_json_file("assets/basic_map.json").expect("Couldnt load map");
@@ -29,6 +32,7 @@ fn main() {
         })
         .insert_resource(path_finding_grid)
         .insert_resource(map)
+        .add_plugin(MovementPlugin)
         .add_plugins(DefaultPlugins)
         .add_plugin(MousePositionPlugin)
         .add_plugin(SelectionBoxPlugin)

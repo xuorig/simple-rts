@@ -1,8 +1,4 @@
 use crate::animation::{Animation, Animations};
-use crate::mouse_position::MouseWorldPosition;
-use crate::path_finding;
-use crate::path_finding::grid::Grid;
-use crate::tiled::Map;
 use bevy::prelude::*;
 
 use std::collections::HashMap;
@@ -11,10 +7,7 @@ pub struct UnitPlugin;
 
 impl Plugin for UnitPlugin {
     fn build(&self, app: &mut AppBuilder) {
-        app.add_startup_system(setup.system())
-            // .add_system(animation.system())
-            .add_system(order_system.system())
-            .add_system(move_system.system());
+        app.add_startup_system(setup.system());
     }
 }
 
@@ -93,93 +86,4 @@ fn setup(
 
 pub struct MoveOrder {
     pub path: Vec<Vec2>,
-}
-
-fn order_system(
-    commands: &mut Commands,
-    mouse_buttons: Res<Input<MouseButton>>,
-    mouse_position: Res<MouseWorldPosition>,
-    grid: Res<Grid>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-    mut query: Query<(&Transform, &mut Unit, &mut MoveOrder)>,
-) {
-    if mouse_buttons.just_pressed(MouseButton::Right) {
-        for (transform, mut unit, mut move_order) in query.iter_mut() {
-            if unit.selected {
-                let astar_path = path_finding::astar(
-                    Vec2::from(transform.translation),
-                    Vec2::from(mouse_position.0),
-                    &grid,
-                );
-
-                let blue = materials.add(Color::rgba(0.0, 0.0, 255.0, 0.2).into());
-                path_finding::draw_astar_path(astar_path, commands, blue);
-
-                let portals = path_finding::funnel_portals(
-                    Vec2::from(transform.translation),
-                    Vec2::from(mouse_position.0),
-                    &grid,
-                );
-                let red = materials.add(Color::rgba(255.0, 0.0, 0.0, 0.2).into());
-                path_finding::draw_funnel_portals(portals, commands, red);
-
-                let mut best_path = path_finding::find_path(
-                    Vec2::from(transform.translation),
-                    Vec2::from(mouse_position.0),
-                    &grid,
-                );
-
-                let black = materials.add(Color::rgba(0.0, 0.0, 0.0, 0.2).into());
-                path_finding::draw_funnel_path(best_path.clone(), commands, black);
-
-                unit.velocity = Vec2::zero();
-
-                // We're here already
-                best_path.remove(0);
-
-                move_order.path = best_path
-            }
-        }
-    }
-}
-
-fn move_system(
-    time: Res<Time>,
-    map: Res<Map>,
-    mut query: Query<(&mut Unit, &mut Transform, &mut MoveOrder, &mut Animations)>,
-) {
-    for (mut unit, mut transform, mut move_order, mut animations) in query.iter_mut() {
-        if move_order.path.is_empty() {
-            animations.play("idle".to_string());
-        } else {
-            animations.play("moving".to_string());
-
-            let order_coords = move_order.path[0];
-
-            let desired = order_coords - transform.translation.truncate();
-            let desired_velocity = desired * (unit.max_speed / desired.length());
-            let force = desired_velocity - unit.velocity;
-            let seek = force * (unit.max_force / unit.max_speed);
-
-            unit.velocity += seek * time.delta_seconds();
-            // unit.velocity = desired_velocity;
-
-            let speed = unit.velocity.length();
-
-            if speed > unit.max_speed {
-                unit.velocity = unit.velocity * (4.0 / speed);
-            }
-
-            let new_translation = unit.velocity * time.delta_seconds();
-
-            transform.translation.x += new_translation.x;
-            transform.translation.y += new_translation.y;
-
-            let diff = transform.translation.truncate() - order_coords;
-
-            if diff.length() < 12.0 {
-                move_order.path.remove(0);
-            }
-        }
-    }
 }
