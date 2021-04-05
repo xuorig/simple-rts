@@ -60,9 +60,9 @@ fn physics_system(
                     transform.translation.y + new_translation.y,
                     transform.translation.z,
                 ),
-                Vec2::new(24.0, 24.0),
+                Vec2::new(16.0, 24.0),
                 other_transform.translation,
-                Vec2::new(24.0, 24.0),
+                Vec2::new(16.0, 24.0),
             );
 
             if collide_result.is_some() {
@@ -99,17 +99,12 @@ fn velocity_system(time: Res<Time>, mut query: Query<(&mut Unit, &Transform, &Mo
     for (mut unit, transform, move_order) in query.iter_mut() {
         if let Some(order_coords) = move_order.path.get(0) {
             let desired = *order_coords - transform.translation.truncate();
-            info!("Desired Length {}", desired);
 
             if desired.length() != 0.0 {
                 let desired_velocity = desired * (unit.max_speed / desired.length());
-                info!("Desired Velocity {}", desired_velocity);
                 let force = desired_velocity - unit.velocity;
-                info!("Force {}", force);
                 let seek = force * (unit.max_force / unit.max_speed);
-                info!("Seek {}", seek);
 
-                info!("New Velocity: {}", unit.velocity);
                 unit.velocity += seek * time.delta_seconds();
 
                 let speed = unit.velocity.length();
